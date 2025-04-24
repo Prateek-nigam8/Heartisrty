@@ -48,7 +48,7 @@ def check_risk_factors(patient):
 
 
 def predict_heart_disease(
-    new_patient_data, features, model_path="heart_disease_xgb_model.pkl"
+    new_patient_data, model_path="heart_disease_xgb_model.pkl"
 ):
     """
     Predicts heart disease and flags any abnormal health metrics.
@@ -126,16 +126,13 @@ patient_data_list = [
     },
 ]
 
-# Predict for each patient
-for i, patient in enumerate(patient_data_list, 1):
-    actual, predicted, probability, risk_lv, caution_flags = predict_heart_disease(
-        patient.copy(), features
-    )
-    print(f"\n🩺 Patient {i}:")
-    print(
-        f"  Actual: {actual}, Predicted: {predicted} (Prob: {probability:.4f}), Risk Level: {risk_lv}"
-    )
-    if caution_flags:
-        print(f"  ⚠️  Caution! Abnormal Parameters: {', '.join(caution_flags)}")
-    else:
-        print("  ✅ All vital parameters within normal range.")
+if __name__ == "__main__":
+    # Predict for each patient
+    for i, patient in enumerate(patient_data_list, 1):
+        actual, predicted, probability, risk_lv, caution_flags = predict_heart_disease(patient.copy())
+        print(f"\nPatient {i}:")
+        print(f"    Actual: {actual}, Predicted: {predicted} (Prob: {probability:.4f}), Risk Level: {risk_lv}")        
+        if caution_flags:
+            print("    Caution! Abnormal Parameters: "  + ", ".join(caution_flags))
+        else:
+            print("    ✅ All vital parameters within normal range.")

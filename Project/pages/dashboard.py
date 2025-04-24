@@ -4,73 +4,76 @@ import io
 import sys
 import os
 import time
+import re
 
 # Add the project directory to the Python path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from db import get_db_connection
 from ocr import extract_medical_data
+from validations import validate_health_data
+
 import bcrypt
+
 def save_health_data_to_db(health_data):
-    """Save health data to the heart_patient_data table"""
+    st.write(health_data)
+    """Save health data to the heart_patient_data table."""
     conn = get_db_connection()
     cursor = conn.cursor()
     
     try:
-        # Ensure user_id is available in the session
         if "user" not in st.session_state or "id" not in st.session_state["user"]:
             st.error("User not logged in or user ID not found!")
             return False
         
         user_id = st.session_state["user"]["id"]
         
-        # Prepare the SQL query to insert heart patient data
+        # Ensure that no required field is empty
+        required_fields = [
+            'Age', 'Sex', 'ChestPainType', 'RestingBP', 'Cholesterol', 
+            'FastingBS', 'RestingECG', 'MaxHR', 'ExerciseAngina', 
+            'Oldpeak', 'ST_Slope', 'SOSEmail'
+        ]
+        
+        # Check for missing fields
+        missing_fields = [field for field in required_fields if field not in health_data or not health_data[field]]
+        if missing_fields:
+            st.error(f"❌ Missing required fields: {', '.join(missing_fields)}")
+            return False
+        
+        # Prepare SQL query to insert health data
         query = """
         INSERT INTO heart_patient_data (
             user_id, Age, Sex, ChestPainType, RestingBP, 
             Cholesterol, FastingBS, RestingECG, MaxHR, 
-            ExerciseAngina, Oldpeak, ST_Slope, Smoking, 
+            ExerciseAngina, Oldpeak, ST_Slope, 
             sos_emergency_mail
         ) VALUES (
             %s, %s, %s, %s, %s, %s, %s, %s, 
-            %s, %s, %s, %s, %s, %s
+            %s, %s, %s, %s, %s
         )
         """
         
-        # Map the health_data to match the database schema
+        # Values to insert into the database
         values = (
-            user_id,  # Add user_id here
-            health_data.get('Age', None),
-            health_data.get('Sex', 'Male'),  # Default to 'Male'
-            {
-                'Typical Angina': 'TA', 
-                'Atypical Angina': 'ATA', 
-                'Non-Anginal Pain': 'NAP', 
-                'Asymptomatic': 'ASY'
-            }.get(health_data.get('ChestPainType', 'Typical Angina'), 'TA'),
-            health_data.get('RestingBP', None),
-            health_data.get('Cholesterol', None),
-            1 if health_data.get('FastingBloodSugar', 0) > 120 else 0,
-            {
-                'Normal': 'Normal', 
-                'ST-T Wave Abnormality': 'ST', 
-                'Left Ventricular Hypertrophy': 'LVH'
-            }.get(health_data.get('RestingECG', 'Normal'), 'Normal'),
-            health_data.get('MaxHeartRate', None),
-            'Yes' if health_data.get('ExerciseAngina', 'No') == 'Yes' else 'No',
-            health_data.get('Oldpeak', None),
-            {
-                'Upsloping': 'Up', 
-                'Flat': 'Flat', 
-                'Downsloping': 'Down'
-            }.get(health_data.get('ST_Slope', 'Upsloping'), 'Up'),
-            'Yes' if health_data.get('Smoking', 'No') == 'Yes' else 'No',
-            health_data.get('SOSEmail', None)
+            user_id,
+            health_data.get('Age'),
+            health_data.get('Sex'),
+            health_data.get('ChestPainType'),
+            health_data.get('RestingBP'),
+            health_data.get('Cholesterol'),
+            health_data.get('FastingBS'),
+            health_data.get('RestingECG'),
+            health_data.get('MaxHR'),
+            health_data.get('ExerciseAngina'),
+            health_data.get('Oldpeak'),
+            health_data.get('ST_Slope'),
+            health_data.get('SOSEmail')
         )
         
+        # Execute the query and commit the transaction
         cursor.execute(query, values)
-        conn.commit()
-        st.success("Health data saved successfully to database!")
+        conn.commit()        
         return True
     except Exception as e:
         st.error(f"Error saving health data: {e}")
@@ -79,212 +82,171 @@ def save_health_data_to_db(health_data):
         cursor.close()
         conn.close()
 
-def show(go_to_page):
-    st.title("📊 Dashboard")
-    
-    if "user" in st.session_state:
-        st.success(f"Welcome, {st.session_state['user']['username']}!")
-        
-        # Initialize session state for tracking PDF processing
-        if 'pdf_processing_complete' not in st.session_state:
-            st.session_state['pdf_processing_complete'] = False
-        
-        tab1, tab2 = st.tabs(["Upload Document (PDF)", "Manual Entry"])
-        
-        with tab1:
-            st.subheader("Upload Medical Document for Scanning")
-            st.write("Upload your medical report as a PDF and we'll extract the relevant heart health metrics.")
-            
-            uploaded_file = st.file_uploader("Upload a PDF file", type=["pdf"])
-            
-            if uploaded_file is not None:
-                st.write("PDF detected.")
-                
-                file_details = {"Filename": uploaded_file.name, "File Size": f"{uploaded_file.size / 1024:.2f} KB"}
-                st.write(file_details)
-                
-                if st.button("Extract Data from PDF"):
-                    # Create a placeholder for progress updates
-                    progress_text = st.empty()
-                    progress_bar = st.progress(0)
-                    
-                    try:
-                        # Simulate OCR scanning process
-                        progress_text.text("Initiating OCR scan...")
-                        time.sleep(1)
-                        
-                        progress_bar.progress(25)
-                        progress_text.text("Preparing document for scanning...")
-                        time.sleep(1)
-                        
-                        # Save uploaded file temporarily
-                        with open("temp_uploaded.pdf", "wb") as f:
-                            f.write(uploaded_file.getbuffer())
-                        
-                        progress_bar.progress(50)
-                        progress_text.text("Scanning medical document...")
-                        time.sleep(1)
-                        
-                        # Use OCR to extract medical data
-                        extracted_metrics = extract_medical_data("temp_uploaded.pdf")
-                        
-                        progress_bar.progress(75)
-                        progress_text.text("Processing extracted data...")
-                        time.sleep(1)
-                        
-                        if extracted_metrics:
-                            # Ensure numeric values are non-zero or use default
-                            if 'trestbps' not in extracted_metrics or extracted_metrics['trestbps'] < 80:
-                                extracted_metrics['trestbps'] = 120
-                            
-                            st.session_state["extracted_metrics"] = extracted_metrics
-                            st.session_state['pdf_processing_complete'] = True
-                            
-                            progress_bar.progress(100)
-                            progress_text.text("Scan complete!")
-                            
-                            # Wait for 10 seconds and then switch to manual entry tab
-                            time.sleep(10)
-                            st.query_params(tab="Manual Entry")
 
-                            st.experimental_rerun()
-                        else:
-                            st.warning("No health metrics could be extracted from the PDF.")
-                    
-                    except Exception as e:
-                        st.error(f"Error processing PDF: {e}")
-                    
-                    finally:
-                        # Clean up temporary file
-                        if os.path.exists("temp_uploaded.pdf"):
-                            os.remove("temp_uploaded.pdf")
+def show_upload_tab():
+    st.subheader("Upload Medical Document for Scanning")
+    st.write("Upload your medical report as a PDF...")
+
+    uploaded_file = st.file_uploader("Upload a PDF file", type=["pdf"])
+    
+    if uploaded_file:
+        st.write({"Filename": uploaded_file.name, "Size": f"{uploaded_file.size / 1024:.2f} KB"})
         
-        with tab2:
-            st.subheader("Manual Health Data Entry")
-            st.write("Please fill in your cardiovascular health metrics:")
+        if st.button("Extract Data from PDF"):
+            progress_text = st.empty()
+            progress_bar = st.progress(0)
             
-            pre_filled = {}
-            if "extracted_metrics" in st.session_state:
-                pre_filled = st.session_state["extracted_metrics"]
-                st.info("Some fields have been pre-filled with data extracted from your uploaded document.")
-            
-            with st.form("health_metrics_form"):
-                col1, col2 = st.columns(2)
+            try:
+                progress_text.text("Initiating OCR scan...")
+                time.sleep(1)
+                progress_bar.progress(25)
                 
-                with col1:
-                    # Set default or pre-filled value for Resting BP to ensure it's >= min_value
-                    default_resting_bp = max(80, int(pre_filled.get("trestbps", 120)))
-                    
-                    age = st.number_input(
-                        "Age", 
-                        min_value=18, 
-                        max_value=120, 
-                        value=int(pre_filled.get("Age", 40)) if "Age" in pre_filled else 40
-                    )
-                    
-                    sex = st.selectbox(
-                        "Sex", 
-                        ["Male", "Female"], 
-                        index=0 if pre_filled.get("Sex", "Male") == "Male" else 1
-                    )
-                    
-                    resting_bp = st.number_input(
-                        "Resting Blood Pressure (mmHg)", 
-                        min_value=80, 
-                        max_value=220, 
-                        value=default_resting_bp
-                    )
-                    
-                    cholesterol = st.number_input(
-                        "Cholesterol (mg/dL)", 
-                        min_value=100, 
-                        max_value=600, 
-                        value=int(pre_filled.get("chol", 200))
-                    )
-                    
-                    fasting_blood_sugar = st.number_input(
-                        "Fasting Blood Sugar (mg/dL)", 
-                        min_value=50, 
-                        max_value=400, 
-                        value=max(50, int(pre_filled.get("fbs", 100)))
-                    )
+                with open("temp_uploaded.pdf", "wb") as f:
+                    f.write(uploaded_file.getbuffer())
                 
-                with col2:
-                    max_heart_rate = st.number_input(
-                        "Maximum Heart Rate (bpm)", 
-                        min_value=60, 
-                        max_value=220, 
-                        value=int(pre_filled.get("MaxHeartRate", 150))
-                    )
-                    
-                    chest_pain_type = st.selectbox(
-                        "Chest Pain Type", 
-                        ["Typical Angina", "Atypical Angina", "Non-Anginal Pain", "Asymptomatic"],
-                        index=pre_filled.get("cp", 0) if "cp" in pre_filled else 0
-                    )
-                    
-                    oldpeak = st.number_input(
-                        "Oldpeak (ST depression)", 
-                        min_value=0.0, 
-                        max_value=10.0, 
-                        value=float(pre_filled.get("Oldpeak", 0.0))
-                    )
-                    
-                    st_slope = st.selectbox(
-                        "ST Slope", 
-                        ["Upsloping", "Flat", "Downsloping"],
-                        index=pre_filled.get("ST_Slope", 0) if "ST_Slope" in pre_filled else 0
-                    )
-                    
-                    exercise_angina = st.selectbox(
-                        "Exercise Induced Angina",
-                        ["No", "Yes"],
-                        index=0 if pre_filled.get("ExerciseAngina", "No") == "No" else 1
-                    )
-                    
-                    smoking = st.selectbox(
-                        "Smoking Status",
-                        ["No", "Yes"],
-                        index=0 if pre_filled.get("Smoking", "No") == "No" else 1
-                    )
-                    
-                    sos_email = st.text_input(
-                        "Emergency Contact Email", 
-                        placeholder="Enter email for emergency contact",
-                        value=pre_filled.get("SOSEmail", "")
-                    )
+                progress_bar.progress(50)
+                progress_text.text("Scanning document...")
+                time.sleep(1)
                 
-                # Add the form submit button
-                submit_button = st.form_submit_button("Save Health Data")
+                extracted_metrics = extract_medical_data("temp_uploaded.pdf")
                 
-                if submit_button:
-                    # Prepare health data dictionary
-                    health_data = {
-                        "Age": age,
-                        "Sex": sex,
-                        "ChestPainType": chest_pain_type,
-                        "RestingBP": resting_bp,
-                        "Cholesterol": cholesterol,
-                        "FastingBloodSugar": fasting_blood_sugar,
-                        "MaxHeartRate": max_heart_rate,
-                        "RestingECG": "Normal",  # Default value, can be modified if needed
-                        "ExerciseAngina": exercise_angina,
-                        "Oldpeak": oldpeak,
-                        "ST_Slope": st_slope,
-                        "Smoking": smoking,
-                        "SOSEmail": sos_email
-                    }
-                    
-                    # Save health data to database
-                    result = save_health_data_to_db(health_data)
-                    
-                    if result:
-                        st.success("Health data saved successfully!")
-        
-        if st.button("Logout"):
+                progress_bar.progress(75)
+                progress_text.text("Processing data...")
+                time.sleep(1)
+                
+                if extracted_metrics:
+                    st.session_state["extracted_metrics"] = extracted_metrics
+                    st.session_state['pdf_processing_complete'] = True
+                    progress_bar.progress(100)
+                    progress_text.text("Scan complete!")
+                    time.sleep(3)
+                    st.write(extracted_metrics)
+                else:
+                    st.warning("No data extracted.")
+            except Exception as e:
+                st.error(f"Error: {e}")
+            finally:
+                if os.path.exists("temp_uploaded.pdf"):
+                    os.remove("temp_uploaded.pdf")
+
+
+def is_valid_email(email):
+    return re.match(r"[^@]+@[^@]+\.[^@]+", email)
+
+def show_manual_entry_tab():
+    st.subheader("Manual Health Data Entry")
+    st.write("⚠️ All fields are required. Please enter valid data for each.")
+    pre_filled = st.session_state.get("extracted_metrics", {})
+    # Define options for all selectboxes
+    select_fields = {
+        "Sex": ["", "Male", "Female"],
+        "ChestPainType": ["", "Typical Angina", "Atypical Angina", "Non-Anginal Pain", "Asymptomatic"],
+        "RestingECG": ["", "Normal", "ST-T Wave Abnormality", "Left Ventricular Hypertrophy"],
+        "ST_Slope": ["", "Upsloping", "Flat", "Downsloping"],
+        "ExerciseAngina": ["", "No", "Yes"]
+    }
+
+    # Pre-fill selectbox indices based on document values
+    select_indices = {}
+    for field, options in select_fields.items():
+        value = pre_filled.get(field, "")
+        index = options.index(value) if value in options else 0
+        select_indices[field] = index
+
+    if pre_filled:
+        st.info("Fields pre-filled from uploaded document. Please review and complete all.")
+
+    with st.form("health_metrics_form"):
+        col1, col2 = st.columns(2)
+        with col1:
+            age = st.text_input("Age", value=str(pre_filled.get("Age", "")))
+            sex = st.selectbox("Sex", select_fields["Sex"], index=select_indices["Sex"])
+            resting_bp = st.text_input("Resting BP (mmHg)", value=str(pre_filled.get("RestingBP", "")))
+            cholesterol = st.text_input("Cholesterol (mg/dL)", value=str(pre_filled.get("Cholesterol", "")))
+            fasting_bs = st.text_input("Fasting Blood Sugar (mg/dL)", value=str(pre_filled.get("FastingBS", "")))
+            sos_email = st.text_input("Emergency Contact Email", value=pre_filled.get("SOSEmail", ""))
+
+        with col2:
+            max_hr = st.text_input("Maximum Heart Rate (bpm)", value=str(pre_filled.get("MaxHR", "")))
+            chest_pain_type = st.selectbox("Chest Pain Type", select_fields["ChestPainType"], index=select_indices["ChestPainType"])
+            resting_ecg = st.selectbox("Resting ECG", select_fields["RestingECG"], index=select_indices["RestingECG"])
+            oldpeak = st.text_input("Oldpeak (ST depression)", value=str(pre_filled.get("Oldpeak", "")))
+            st_slope = st.selectbox("ST Slope", select_fields["ST_Slope"], index=select_indices["ST_Slope"])
+            exercise_angina = st.selectbox("Exercise Angina", select_fields["ExerciseAngina"], index=select_indices["ExerciseAngina"])
+
+        submitted = st.form_submit_button("Save Health Data")
+
+        if submitted:
+            health_data = {
+                "Age": age,
+                "Sex": sex,
+                "ChestPainType": chest_pain_type,
+                "RestingBP": resting_bp,
+                "Cholesterol": cholesterol,
+                "FastingBS": fasting_bs,
+                "MaxHR": max_hr,
+                "Oldpeak": oldpeak,
+                "ST_Slope": st_slope,
+                "ExerciseAngina": exercise_angina,
+                "RestingECG": resting_ecg,
+                "SOSEmail": sos_email
+            }
+
+            errors = validate_health_data(health_data)
+
+            if errors:
+                for field, msg in errors.items():
+                    st.error(f"❌ {field}: #{msg}")
+            else:
+                # Convert to proper types now (safe after validation)
+                health_data.update({
+                    "Age": int(age),
+                    "RestingBP": int(resting_bp),
+                    "Cholesterol": int(cholesterol),
+                    "FastingBS": float(fasting_bs),
+                    "MaxHR": int(max_hr),
+                    "Oldpeak": float(oldpeak)                    
+                })                
+                
+                if save_health_data_to_db(health_data):
+                    st.success("✅ Health data saved successfully!")
+                    if st.button("Go to analysis tab"):
+                        st.switch_page("pages/analysis.py")
+
+
+col1, col2 = st.columns([8, 1])  # Adjust the middle ratio as needed
+
+with col1:
+    st.markdown("# 📊 Dashboard")  # Title on the left
+
+with col2:
+    if "user" in st.session_state and "id" in st.session_state["user"]:
+        if st.button("Log out"):
             del st.session_state["user"]
-            go_to_page("landing")
-    else:
-        st.error("You are not logged in!")
-        if st.button("Go to Login"):
-            go_to_page("login")
+            st.switch_page("pages/login.py")
+
+if "notices" in st.session_state:
+    for i in st.session_state["notices"]:
+        st.success(i)
+    del st.session_state["notices"]
+
+if "user" not in st.session_state:
+    st.error("You are not logged in!")
+    if st.button("Go to Login"):
+        st.switch_page("pages/login.py")
+else:
+    st.success(f"Welcome, {st.session_state['user']['username']}!")
+
+    if 'pdf_processing_complete' not in st.session_state:
+        st.session_state['pdf_processing_complete'] = False
+
+    # Section 1: Upload and extract
+    st.header("📤 Upload Medical Document")
+    show_upload_tab()  # Handles file upload and sets session_state["extracted_metrics"]
+
+    # Separator line
+    st.markdown("---")
+
+    # Section 2: Manual Entry Form
+    st.header("📝 Manual Health Data Entry")
+    show_manual_entry_tab()

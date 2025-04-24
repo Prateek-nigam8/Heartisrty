@@ -17,34 +17,38 @@ def check_login(username, password):
         return user  
     return None  
 
-def show(go_to_page):
-    st.title("🔐 Login to Heartistry")
+if "user" in st.session_state:
+    st.session_state["notices"] = ["You are already logged in"]
+    st.switch_page("pages/dashboard.py")
 
+st.title("🔐 Login to Heartistry")
+
+with st.form("login_form"):
     username = st.text_input("Username")
     password = st.text_input("Password", type="password")
+    submitted = st.form_submit_button("Login")
 
-    col1, col2, col3 = st.columns([1, 1, 1])
-    
-    with col1:
-        if st.button("Login", key="login_button", use_container_width=True):
-            user = check_login(username, password)
-            if user:
-                st.success("✅ Login successful! Redirecting...")
-                st.session_state["user"] = user  
-                go_to_page("dashboard")
-            else:
-                st.error("❌ Invalid username or password!")
-    
-    st.write("")
-    
-    col1, col2 = st.columns([1, 1])
-    
-    with col1:
-        st.write("Don't have an account?")
-        if st.button("Create an Account", use_container_width=True):
-            go_to_page("signup")
-    
-    with col2:
-        st.write("Forgot your password?")
-        if st.button("Reset Password", use_container_width=True):
-            go_to_page("forgot_password")
+    if submitted:
+        user = check_login(username, password)
+        if user:
+            st.success("✅ Login successful! Redirecting...")
+            st.session_state["user"] = user  
+            if "admin" in st.session_state: del st.session_state["admin"]
+            if "is_admin" in st.session_state: del st.session_state["is_admin"]
+            st.switch_page("pages/dashboard.py")
+        else:
+            st.error("❌ Invalid username or password!")
+
+st.write("")
+
+col1, col2 = st.columns([1, 1])
+
+with col1:
+    st.write("Don't have an account?")
+    if st.button("Create an Account", use_container_width=True):
+        st.switch_page("pages/signup.py")
+
+with col2:
+    st.write("Forgot your password?")
+    if st.button("Reset Password", use_container_width=True):
+        st.switch_page("pages/forgot_password.py")
