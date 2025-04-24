@@ -21,27 +21,31 @@ def register_user(username, email, password):
     hashed_password = bcrypt.hashpw(password.encode(), bcrypt.gensalt())
 
     # Insert new user
-    cursor.execute("INSERT INTO users (username, email, password) VALUES (%s, %s, %s)", 
-                   (username, email, hashed_password.decode()))  # Store as string
+    cursor.execute("INSERT INTO users (username, email, password, is_admin) VALUES (%s, %s, %s)", 
+                   (username, email, hashed_password.decode(), 0))  # Store as string
     conn.commit()
     conn.close()
     return "success"
 
-def show(go_to_page):
-    st.title("🆕 Create an Account")
+if "user" in st.session_state:
+    st.session_state["notices"] = ["You are already logged in"]
+    st.switch_page("pages/dashboard.py")
 
-    username = st.text_input("Choose a Username")
-    email = st.text_input("Email")
-    password = st.text_input("Create Password", type="password")
-    confirm_password = st.text_input("Confirm Password", type="password")
+st.title("🆕 Create an Account")
 
-    if st.button("Sign Up"):
-        if password != confirm_password:
-            st.error("Passwords do not match!")
+username = st.text_input("Choose a Username")
+email = st.text_input("Email")
+password = st.text_input("Create Password", type="password")
+confirm_password = st.text_input("Confirm Password", type="password")
+
+if st.button("Sign Up"):
+    if password != confirm_password:
+        st.error("Passwords do not match!")
+    else:
+        result = register_user(username, email, password)
+        if result == "success":
+            st.success("Account created successfully! Please log in.")
+            if st.button("Go to login page"):
+                st.switch_page("pages/login.py")
         else:
-            result = register_user(username, email, password)
-            if result == "success":
-                st.success("Account created successfully! Please log in.")
-                go_to_page("login")
-            else:
-                st.error(result)
+            st.error(result)

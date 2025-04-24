@@ -85,70 +85,74 @@ def update_password(email, new_password):
     
     return True
 
-def show(go_to_page):
-    st.title("🔑 Forgot Password")
+
+if "user" in st.session_state:
+    st.session_state["notices"] = ["You are already logged in"]
+    st.switch_page("pages/dashboard.py")
+
+st.title("🔑 Forgot Password")
+
+# Check if we're in reset code verification mode
+if "reset_email" in st.session_state and "reset_code" in st.session_state:
+    st.info(f"Enter the verification code sent to {st.session_state['reset_email']}")
     
-    # Check if we're in reset code verification mode
-    if "reset_email" in st.session_state and "reset_code" in st.session_state:
-        st.info(f"Enter the verification code sent to {st.session_state['reset_email']}")
-        
-        verification_code = st.text_input("Verification Code", key="verification_input")
-        new_password = st.text_input("New Password", type="password")
-        confirm_password = st.text_input("Confirm New Password", type="password")
-        
-        if st.button("Reset Password"):
-            if verification_code != st.session_state["reset_code"]:
-                st.error("❌ Invalid verification code!")
-            elif new_password != confirm_password:
-                st.error("❌ Passwords do not match!")
-            elif len(new_password) < 6:
-                st.error("❌ Password must be at least 6 characters long")
-            else:
-                # Update password in database
-                if update_password(st.session_state["reset_email"], new_password):
-                    st.success("✅ Password reset successful!")
-                    # Clear reset state
-                    del st.session_state["reset_email"]
-                    del st.session_state["reset_code"]
-                    
-                    # Redirect to login after displaying success message
-                    st.info("Redirecting to login page...")
-                    st.rerun()  # Using st.rerun() instead of experimental_rerun
-                    go_to_page("login")
-                else:
-                    st.error("❌ Error updating password")
-                    
-        if st.button("Back to Login"):
-            # Clear reset state
-            if "reset_email" in st.session_state:
+    verification_code = st.text_input("Verification Code", key="verification_input")
+    new_password = st.text_input("New Password", type="password")
+    confirm_password = st.text_input("Confirm New Password", type="password")
+    
+    if st.button("Reset Password"):
+        if verification_code != st.session_state["reset_code"]:
+            st.error("❌ Invalid verification code!")
+        elif new_password != confirm_password:
+            st.error("❌ Passwords do not match!")
+        elif len(new_password) < 6:
+            st.error("❌ Password must be at least 6 characters long")
+        else:
+            # Update password in database
+            if update_password(st.session_state["reset_email"], new_password):
+                st.success("✅ Password reset successful!")
+                # Clear reset state
                 del st.session_state["reset_email"]
-            if "reset_code" in st.session_state:
                 del st.session_state["reset_code"]
-            go_to_page("login")
-            
-    else:
-        # Normal forgot password flow
-        email = st.text_input("Enter your Email")
-        
-        if st.button("Send Reset Code"):
-            if email.strip() == "":
-                st.error("❌ Please enter your email address")
+                
+                # Redirect to login after displaying success message
+                st.info("Redirecting to login page...")
+                st.rerun()  # Using st.rerun() instead of experimental_rerun
+                st.switch_page("pages/login.py")
             else:
-                user = check_email_exists(email)
-                if user:
-                    # Generate reset code and store in session
-                    reset_code = generate_reset_code()
-                    st.session_state["reset_email"] = email
-                    st.session_state["reset_code"] = reset_code
-                    
-                    # Send email with reset code
-                    if send_reset_email(email, reset_code):
-                        st.success("✅ Reset code sent to your email!")
-                        st.rerun()  # Using st.rerun() instead of experimental_rerun
-                    else:
-                        st.error("❌ Error sending reset code")
+                st.error("❌ Error updating password")
+                
+    if st.button("Back to Login"):
+        # Clear reset state
+        if "reset_email" in st.session_state:
+            del st.session_state["reset_email"]
+        if "reset_code" in st.session_state:
+            del st.session_state["reset_code"]
+        st.switch_page("pages/login.py")
+        
+else:
+    # Normal forgot password flow
+    email = st.text_input("Enter your Email")
+    
+    if st.button("Send Reset Code"):
+        if email.strip() == "":
+            st.error("❌ Please enter your email address")
+        else:
+            user = check_email_exists(email)
+            if user:
+                # Generate reset code and store in session
+                reset_code = generate_reset_code()
+                st.session_state["reset_email"] = email
+                st.session_state["reset_code"] = reset_code
+                
+                # Send email with reset code
+                if send_reset_email(email, reset_code):
+                    st.success("✅ Reset code sent to your email!")
+                    st.rerun()  # Using st.rerun() instead of experimental_rerun
                 else:
-                    st.error("❌ Email not found in our records")
-                    
-        if st.button("Back to Login"):
-            go_to_page("login")
+                    st.error("❌ Error sending reset code")
+            else:
+                st.error("❌ Email not found in our records")
+                
+    if st.button("Back to Login"):
+        st.switch_page("pages/login.py")

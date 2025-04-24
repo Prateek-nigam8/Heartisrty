@@ -6,22 +6,37 @@ import pytesseract
 import time
 from pdf2image import convert_from_path
 from dotenv import dotenv_values
-from groq import AsyncGroq, RateLimitError
+from groq import AsyncGroq, RateLimitError, BadRequestError
 from httpx import HTTPStatusError
 
 # Extraction prompt
-PROMPT = """Extract the following integer fields from the medical report and return VALID JSON. Note that the report text may be poorly structured due to PDF extraction issues (for example, data from tables might be split across multiple lines). If a field is missing or cannot be reliably determined, omit it. If no fields are extracted, return an empty JSON object (i.e., {}):
+PROMPT = """Extract JSON with these keys exactly:
+- Age: integer (years)
+- Sex: "Male" or "Female"
+- ChestPainType: one of
+    • TA = Typical Angina
+    • ATA = Atypical Angina
+    • NAP = Non-anginal Pain
+    • ASY = Asymptomatic
+- RestingBP: integer (mm Hg)
+- Cholesterol: integer (mg/dL)
+- FastingBS: integer (mg/dL)
+- RestingECG: one of
+    • Normal
+    • ST = ST-T wave abnormality
+    • LVH = Left ventricular hypertrophy
+- MaxHR: integer (beats per minute)
+- ExerciseAngina: "Yes" or "No"
+- Oldpeak: decimal (ST depression vs. rest)
+- ST_Slope: one of
+    • Up = upward slope
+    • Flat = flat slope
+    • Down = downward slope
 
-- age: Patient's age.
-- sex: (1 = Male, 0 = Female).
-- cp: Chest pain type (0 = Typical, 1 = Atypical, 2 = Non-anginal, 3 = Asymptomatic).
-- trestbps: Resting blood pressure (mm Hg).
-- chol: Serum cholesterol (mg/dL).
-- fbs: Fasting blood sugar indicator (mg/dL), where the value is 1 if the reported fasting blood sugar is greater than 120 mg/dl, otherwise 0.
-- restecg: ECG (0 = Normal, 1 = ST-T abnormality, 2 = LVH).
-- thal: Thalassemia (1 = Normal, 2 = Fixed defect, 3 = Reversible defect).
-- triglycerides: Serum Triglyceride (mg/dL) (0 = Normal <150, 1 = Borderline 150–199, 2 = High 200–499, 3 = Very high ≥500).
+If a field is missing or unclear, omit it.  
+If none are found, return {}.
 """
+
 
 # Load environment variables
 env_vars = dotenv_values(".env")
@@ -78,6 +93,9 @@ async def process_page(page_text, index):
                 retry_after = e.response.headers.get("Retry-After")
             if retry_after:                
                 await asyncio.sleep(float(retry_after))
+            continue
+
+        except BadRequestError as e:
             continue
 
         except HTTPStatusError as e:

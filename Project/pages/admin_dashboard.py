@@ -119,15 +119,19 @@ def send_sos_email(to_email, patient_data):
         st.error(f"Error sending SOS email: {e}")
         return False
 
-def show(go_to_page):
-    if "is_admin" not in st.session_state or not st.session_state["is_admin"]:
-        st.error("Unauthorized access!")
-        if st.button("Go to Admin Login"):
-            go_to_page("admin_login")
-        return
-    
+
+if "is_admin" not in st.session_state or not st.session_state["is_admin"]:
+    st.error("Unauthorized access!")
+    if st.button("Go to Admin Login"):
+        st.switch_page("pages/admin_login.py")
+else:
+
     st.title("👑 Admin Dashboard")
-    
+
+    if "notices" in st.session_state:
+        for i in st.session_state["notices"]:
+            st.success(i)
+            del st.session_state["notices"]
     # Admin Header
     col1, col2 = st.columns([3, 1])
     with col1:
@@ -136,11 +140,11 @@ def show(go_to_page):
         if st.button("Logout", key="admin_logout"):
             del st.session_state["admin"]
             del st.session_state["is_admin"]
-            go_to_page("admin_login")
-    
+            st.switch_page("pages/admin_login.py")
+
     # Tabs for different admin functions
     tab1, tab2, tab3 = st.tabs(["Dashboard Overview", "User Management", "Heart Patient Data"])
-    
+
     with tab1:
         # Dashboard Overview Tab
         stats = get_user_stats()
@@ -161,7 +165,7 @@ def show(go_to_page):
             st.dataframe(recent_df, use_container_width=True)
         else:
             st.info("No heart data found")
-    
+
     with tab2:
         # User Management Tab
         st.subheader("User Management")
@@ -187,7 +191,7 @@ def show(go_to_page):
             st.dataframe(users_df, hide_index=True, use_container_width=True)
         else:
             st.info("No users found")
-    
+
     with tab3:
         # Heart Patient Data Tab
         st.subheader("Heart Patient Data Management")

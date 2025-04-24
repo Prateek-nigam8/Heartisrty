@@ -1,0 +1,4 @@
+[server]
+runOnSave = true
+fileWatcherType = "watchdog"  # or "poll" if you’re on Docker/WSL
+allowRunOnSave = true

@@ -18,25 +18,30 @@ def check_admin_login(username, password):
         return admin
     return None
 
-def show(go_to_page):
-    st.title("👑 Admin Login")
-    st.markdown("Access restricted to authorized personnel only")
+if "admin" in st.session_state:
+    st.session_state["notices"] = ["You are already logged in"]
+    st.switch_page("pages/admin_dashboard.py")
+
+
+st.title("👑 Admin Login")
+st.markdown("Access restricted to authorized personnel only")
+
+with st.form("admin_login_form"):
+    username = st.text_input("Admin Username")
+    password = st.text_input("Password", type="password")
+    submit = st.form_submit_button("Login")
     
-    with st.form("admin_login_form"):
-        username = st.text_input("Admin Username")
-        password = st.text_input("Password", type="password")
-        submit = st.form_submit_button("Login")
-        
-        if submit:
-            admin = check_admin_login(username, password)
-            if admin:
-                st.success("✅ Admin login successful! Redirecting...")
-                st.session_state["admin"] = admin
-                st.session_state["is_admin"] = True
-                go_to_page("admin_dashboard")
-            else:
-                st.error("❌ Invalid admin credentials or insufficient privileges!")
-                
-    st.markdown("---")
-    if st.button("Return to Main Site"):
-        go_to_page("landing")
+    if submit:
+        admin = check_admin_login(username, password)
+        if admin:
+            st.success("✅ Admin login successful! Redirecting...")
+            if "user" in st.session_state: del st.session_state["user"]
+            st.session_state["admin"] = admin
+            st.session_state["is_admin"] = True            
+            st.switch_page("pages/admin_dashboard.py")
+        else:
+            st.error("❌ Invalid admin credentials or insufficient privileges!")
+            
+st.markdown("---")
+if st.button("Return to Main Site"):
+    st.switch_page("pages/landing.py")
