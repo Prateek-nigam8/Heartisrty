@@ -102,8 +102,25 @@ else:
             cols[i % 2].markdown(f"**{key}**: {value}")
         
         if st.button("Analyze"):
-            actual, predicted, probability, risk_level, flagged = predict_heart_disease(user_data)
-            
+            actual, predicted, probability, risk_level, flagged = predict_heart_disease(user_data)  
+            # 🌟 Save the predicted risk percentage to the database
+            try:
+                conn = get_db_connection()
+                cursor = conn.cursor()
+                cursor.execute("""
+                  UPDATE heart_patient_data
+                  SET risk_percentage = %s
+                  WHERE user_id = %s
+                  ORDER BY id DESC
+                  LIMIT 1
+                  """, (float(probability * 100), user_id))
+                conn.commit()
+                cursor.close()
+                conn.close()
+                st.success("✅ Risk percentage saved successfully in your profile!")
+            except Exception as e:
+                st.warning(f"⚠️ Could not save risk percentage: {e}")
+    
             # 🌡️ Probability Gauge Chart
             gauge = go.Figure(go.Indicator(
                 mode="gauge+number+delta",

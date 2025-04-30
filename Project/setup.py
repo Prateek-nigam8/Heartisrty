@@ -53,6 +53,7 @@ def setup_database(force=False):
             Oldpeak FLOAT NOT NULL,
             ST_Slope ENUM('Upsloping','Flat','Downsloping') NOT NULL,
             sos_emergency_mail VARCHAR(255) NOT NULL,
+            risk_percentage FLOAT DEFAULT NULL,
             user_id INT NOT NULL,
             FOREIGN KEY (user_id) REFERENCES users(id)
         )

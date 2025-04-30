@@ -21,8 +21,10 @@ def register_user(username, email, password):
     hashed_password = bcrypt.hashpw(password.encode(), bcrypt.gensalt())
 
     # Insert new user
-    cursor.execute("INSERT INTO users (username, email, password, is_admin) VALUES (%s, %s, %s)", 
-                   (username, email, hashed_password.decode(), 0))  # Store as string
+    cursor.execute(
+    "INSERT INTO users (username, email, password, is_admin) VALUES (%s, %s, %s, %s)",
+    (username, email, hashed_password.decode(),0)
+)  
     conn.commit()
     conn.close()
     return "success"
