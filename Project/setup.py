@@ -1,7 +1,5 @@
 import argparse
 import subprocess
-from db import get_db_connection
-from create_admin import create_admin_user
 
 
 def install_dependencies():
@@ -12,8 +10,13 @@ def install_dependencies():
     except subprocess.CalledProcessError:
         print("❌ Failed to install packages. Please check requirements.txt and your environment.")
 
+def create_admin():
+    # import your admin‑creation routine after deps are present
+    from create_admin import create_admin_user
+    create_admin_user()
 
 def setup_database(force=False):
+    from db import get_db_connection
     conn = get_db_connection()
     cursor = conn.cursor()
 
@@ -72,4 +75,4 @@ if __name__ == "__main__":
 
     install_dependencies()
     setup_database(force=args.force)
-    create_admin_user()
+    create_admin()

@@ -20,7 +20,7 @@ def check_admin_login(username, password):
 
 if "admin" in st.session_state:
     st.session_state["notices"] = ["You are already logged in"]
-    st.switch_page("pages/admin_dashboard.py")
+    st.switch_page("views/admin_dashboard.py")
 
 
 st.title("👑 Admin Login")
@@ -38,10 +38,10 @@ with st.form("admin_login_form"):
             if "user" in st.session_state: del st.session_state["user"]
             st.session_state["admin"] = admin
             st.session_state["is_admin"] = True            
-            st.switch_page("pages/admin_dashboard.py")
+            st.switch_page("views/admin_dashboard.py")
         else:
             st.error("❌ Invalid admin credentials or insufficient privileges!")
             
 st.markdown("---")
 if st.button("Return to Main Site"):
-    st.switch_page("pages/landing.py")
+    st.switch_page("views/landing.py")

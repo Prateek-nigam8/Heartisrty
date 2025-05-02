@@ -73,8 +73,8 @@ def validate_health_data(data: dict) -> dict:
     max_hr = data.get("MaxHR")
     if not max_hr:
         errors["MaxHR"] = "Maximum Heart Rate is required."
-    elif not is_int(max_hr) or not (60 <= int(max_hr) <= 220):
-        errors["MaxHR"] = "Maximum Heart Rate must be an integer between 60 and 220."
+    elif not (60 <= float(max_hr) <= 220):
+        errors["MaxHR"] = "Maximum Heart Rate must be between 60 and 220."
 
     # Oldpeak
     oldpeak = data.get("Oldpeak")

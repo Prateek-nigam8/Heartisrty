@@ -17,63 +17,96 @@ import bcrypt
 
 def save_health_data_to_db(health_data):
     st.write(health_data)
-    """Save health data to the heart_patient_data table."""
     conn = get_db_connection()
     cursor = conn.cursor()
-    
     try:
         if "user" not in st.session_state or "id" not in st.session_state["user"]:
             st.error("User not logged in or user ID not found!")
             return False
-        
         user_id = st.session_state["user"]["id"]
-        
-        # Ensure that no required field is empty
         required_fields = [
             'Age', 'Sex', 'ChestPainType', 'RestingBP', 'Cholesterol', 
             'FastingBS', 'RestingECG', 'MaxHR', 'ExerciseAngina', 
             'Oldpeak', 'ST_Slope', 'SOSEmail'
         ]
-        
-        # Check for missing fields
         missing_fields = [field for field in required_fields if field not in health_data or not health_data[field]]
         if missing_fields:
             st.error(f"❌ Missing required fields: {', '.join(missing_fields)}")
             return False
-        
-        # Prepare SQL query to insert health data
-        query = """
-        INSERT INTO heart_patient_data (
-            user_id, Age, Sex, ChestPainType, RestingBP, 
-            Cholesterol, FastingBS, RestingECG, MaxHR, 
-            ExerciseAngina, Oldpeak, ST_Slope, 
-            sos_emergency_mail
-        ) VALUES (
-            %s, %s, %s, %s, %s, %s, %s, %s, 
-            %s, %s, %s, %s, %s
-        )
-        """
-        
-        # Values to insert into the database
-        values = (
-            user_id,
-            health_data.get('Age'),
-            health_data.get('Sex'),
-            health_data.get('ChestPainType'),
-            health_data.get('RestingBP'),
-            health_data.get('Cholesterol'),
-            health_data.get('FastingBS'),
-            health_data.get('RestingECG'),
-            health_data.get('MaxHR'),
-            health_data.get('ExerciseAngina'),
-            health_data.get('Oldpeak'),
-            health_data.get('ST_Slope'),
-            health_data.get('SOSEmail')
-        )
-        
-        # Execute the query and commit the transaction
-        cursor.execute(query, values)
-        conn.commit()        
+
+        # Check if a record exists for the user_id
+        cursor.execute("SELECT COUNT(*) FROM heart_patient_data WHERE user_id = %s", (user_id,))
+        record_count = cursor.fetchone()[0]
+        cursor.fetchall()  # Consume any remaining results to prevent "Unread result found"
+
+        if record_count > 0:
+            # Update existing record
+            update_query = """
+            UPDATE heart_patient_data
+            SET 
+                Age = %s,
+                Sex = %s,
+                ChestPainType = %s,
+                RestingBP = %s,
+                Cholesterol = %s,
+                FastingBS = %s,
+                RestingECG = %s,
+                MaxHR = %s,
+                ExerciseAngina = %s,
+                Oldpeak = %s,
+                ST_Slope = %s,
+                sos_emergency_mail = %s
+            WHERE user_id = %s
+            """
+            update_values = (
+                health_data.get('Age'),
+                health_data.get('Sex'),
+                health_data.get('ChestPainType'),
+                health_data.get('RestingBP'),
+                health_data.get('Cholesterol'),
+                health_data.get('FastingBS'),
+                health_data.get('RestingECG'),
+                health_data.get('MaxHR'),
+                health_data.get('ExerciseAngina'),
+                health_data.get('Oldpeak'),
+                health_data.get('ST_Slope'),
+                health_data.get('SOSEmail'),
+                user_id
+            )
+            cursor.execute(update_query, update_values)
+            st.info("Existing health data updated successfully.")
+        else:
+            # Insert new record
+            insert_query = """
+            INSERT INTO heart_patient_data (
+                user_id, Age, Sex, ChestPainType, RestingBP, 
+                Cholesterol, FastingBS, RestingECG, MaxHR, 
+                ExerciseAngina, Oldpeak, ST_Slope, 
+                sos_emergency_mail
+            ) VALUES (
+                %s, %s, %s, %s, %s, %s, %s, %s, 
+                %s, %s, %s, %s, %s
+            )
+            """
+            insert_values = (
+                user_id,
+                health_data.get('Age'),
+                health_data.get('Sex'),
+                health_data.get('ChestPainType'),
+                health_data.get('RestingBP'),
+                health_data.get('Cholesterol'),
+                health_data.get('FastingBS'),
+                health_data.get('RestingECG'),
+                health_data.get('MaxHR'),
+                health_data.get('ExerciseAngina'),
+                health_data.get('Oldpeak'),
+                health_data.get('ST_Slope'),
+                health_data.get('SOSEmail')
+            )
+            cursor.execute(insert_query, insert_values)
+            st.info("New health data inserted successfully.")
+
+        conn.commit()
         return True
     except Exception as e:
         st.error(f"Error saving health data: {e}")
@@ -137,6 +170,7 @@ def show_manual_entry_tab():
     st.subheader("Manual Health Data Entry")
     st.write("⚠️ All fields are required. Please enter valid data for each.")
     pre_filled = st.session_state.get("extracted_metrics", {})
+    
     # Define options for all selectboxes
     select_fields = {
         "Sex": ["", "Male", "Female"],
@@ -155,6 +189,10 @@ def show_manual_entry_tab():
 
     if pre_filled:
         st.info("Fields pre-filled from uploaded document. Please review and complete all.")
+
+    # Initialize session state for save success if not present
+    if "data_saved" not in st.session_state:
+        st.session_state["data_saved"] = False
 
     with st.form("health_metrics_form"):
         col1, col2 = st.columns(2)
@@ -196,7 +234,7 @@ def show_manual_entry_tab():
 
             if errors:
                 for field, msg in errors.items():
-                    st.error(f"❌ {field}: #{msg}")
+                    st.error(f"❌ {field}: {msg}")
             else:
                 # Convert to proper types now (safe after validation)
                 health_data.update({
@@ -207,11 +245,17 @@ def show_manual_entry_tab():
                     "MaxHR": int(max_hr),
                     "Oldpeak": float(oldpeak)                    
                 })                
-                
                 if save_health_data_to_db(health_data):
                     st.success("✅ Health data saved successfully!")
-                    if st.button("Go to analysis tab"):
-                        st.switch_page("pages/analysis.py")
+                    st.session_state["data_saved"] = True
+                else:
+                    st.session_state["data_saved"] = False
+
+    # Navigation button outside the form
+    if st.session_state["data_saved"]:
+        if st.button("Go to analysis tab"):
+            st.session_state["data_saved"] = False  # Reset after navigation
+            st.switch_page("views/analysis.py")
 
 
 col1, col2 = st.columns([8, 1])  # Adjust the middle ratio as needed
@@ -223,7 +267,7 @@ with col2:
     if "user" in st.session_state and "id" in st.session_state["user"]:
         if st.button("Log out"):
             del st.session_state["user"]
-            st.switch_page("pages/login.py")
+            st.switch_page("views/login.py")
 
 if "notices" in st.session_state:
     for i in st.session_state["notices"]:
@@ -233,7 +277,7 @@ if "notices" in st.session_state:
 if "user" not in st.session_state:
     st.error("You are not logged in!")
     if st.button("Go to Login"):
-        st.switch_page("pages/login.py")
+        st.switch_page("views/login.py")
 else:
     st.success(f"Welcome, {st.session_state['user']['username']}!")
 

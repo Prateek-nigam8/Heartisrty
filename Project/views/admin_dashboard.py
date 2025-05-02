@@ -118,7 +118,7 @@ def send_sos_email(to_email, patient_data):
 if "is_admin" not in st.session_state or not st.session_state["is_admin"]:
     st.error("Unauthorized access!")
     if st.button("Go to Admin Login"):
-        st.switch_page("pages/admin_login.py")
+        st.switch_page("views/admin_login.py")
 else:
     st.title("👑 Admin Dashboard")
 
@@ -135,7 +135,7 @@ else:
         if st.button("Logout", key="admin_logout"):
             del st.session_state["admin"]
             del st.session_state["is_admin"]
-            st.switch_page("pages/admin_login.py")
+            st.switch_page("views/admin_login.py")
 
     # Tabs
     tab1, tab2, tab3 = st.tabs(["Dashboard Overview", "User Management", "Heart Patient Data"])
