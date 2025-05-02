@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
-from prediction_model import predict_heart_disease
+from prediction_model import predict_heart_disease, calculate_cardiovascular_age
 from db import get_db_connection
 
 def get_user_details(user_id):
@@ -103,7 +103,8 @@ else:
     user_data = get_user_details(user_id)    
     if user_data:    
         if st.button("Analyze"):
-            actual, predicted, probability, risk_level, flagged = predict_heart_disease(user_data)  
+            predicted, probability, risk_level, flagged = predict_heart_disease(user_data)
+            cardio_age = calculate_cardiovascular_age(user_data)            
             try:
                 conn = get_db_connection()
                 cursor = conn.cursor()
@@ -120,13 +121,61 @@ else:
                 st.success("✅ Risk percentage saved successfully in your profile!")
             except Exception as e:
                 st.warning(f"⚠️ Could not save risk percentage: {e}")
-    
+
+            diff = cardio_age - user_data["Age"]
+            extra = abs(cardio_age - user_data["Age"])
+            # Determine segments: if cardio_age > actual, extra is 'Risk Years', else 'Saved Years'
+            if cardio_age > user_data["Age"]:
+                labels = ["Actual Age", "Risk Years"]
+                values = [user_data["Age"], extra]
+                colors = ["lightgray", "lightcoral"]
+            else:
+                labels = ["Cardio Age", "Saved Years"]
+                values = [cardio_age, extra]
+                colors = ["lightgray","lightgreen"]
+
+            hero_chart = go.Figure(go.Pie(
+                labels=labels,
+                values=values,
+                hole=0.6,
+                marker={'colors': colors},
+                textinfo='label+value',
+                textfont={'size': 15},
+                sort=False
+            ))
+            hero_chart.update_layout(
+                title_text="🧓 Cardiovascular Age vs Actual",
+                annotations=[{
+                    'text': f"{cardio_age} yrs",
+                    'x': 0.5, 'y': 0.5,
+                    'font': {'size': 30, 'color': 'red' if cardio_age > user_data["Age"] else 'green'},
+                    'showarrow': False,                    
+                }],
+                showlegend=False
+            )
+     
+            age_indicator = go.Figure(go.Indicator(
+                mode="number+delta",
+                value=cardio_age,
+                number={ 'font': { 'color': "red" if cardio_age > user_data["Age"] else "green" } },
+                delta={
+                    'reference': user_data["Age"],
+                    'position': "right",
+                    'relative': False,
+                    'suffix': " yrs " + ("more" if cardio_age > user_data["Age"] else "less") + " than actual",
+                    # positive delta (cardio_age > actual) => increasing => bad => red
+                    'increasing': { 'color': "red" },
+                    # negative delta (cardio_age < actual) => decreasing => good => green
+                    'decreasing': { 'color': "green" }
+                },
+                title={ 'text': "🧓 Cardiovascular Age vs Actual" }
+            ))
+
             gauge = go.Figure(go.Indicator(
                 mode="gauge+number+delta",
                 value=probability * 100,
                 title={'text': "Heart Disease Risk %"},
-                gauge=
-{
+                gauge={
                     'axis': {'range': [0, 100]},
                     'bar': {'color': "crimson" if probability > 0.6 else "orange" if probability > 0.3 else "green"},
                     'steps': [
@@ -153,7 +202,7 @@ else:
             bar_chart = go.Figure()
             bar_chart.add_trace(go.Bar(x=metrics_df["Metric"], y=metrics_df["User"], name="User", marker_color="indianred"))
             bar_chart.add_trace(go.Bar(x=metrics_df["Metric"], y=metrics_df["Normal"], name="Normal", marker_color="lightgray"))
-            bar_chart.update_layout(title="📈 Vital Signs Comparison", barmode='group')
+            bar_chart.update_layout(title="📊 Vital Signs Comparison", barmode='group')
 
             radar_metrics = ["Age", "RestingBP", "Cholesterol", "MaxHR", "Oldpeak"]
             user_radar = [user_data[m] for m in radar_metrics]
@@ -164,7 +213,7 @@ else:
             radar_chart.add_trace(go.Scatterpolar(r=norm_radar, theta=radar_metrics, fill='toself', name='Normal'))
             radar_chart.update_layout(polar=dict(radialaxis=dict(visible=True)), title="🕸️ Radar View of Health Profile")
 
-            st.subheader("🧠 Heart Disease Prediction Summary")
+            st.subheader("🧠 Heart Disease Prediction Summary")            
 
             st.markdown(f"### 💬 Risk Interpretation")
             if predicted == 1:
@@ -185,6 +234,9 @@ else:
             else:
                 st.success("✅ All your vital signs appear to be within healthy ranges.")
 
+            st.markdown(f"### 👳 Estimated Cardiovascular Age")
+            st.plotly_chart(hero_chart, use_container_width=True)
+
             st.markdown("### 📊 Vital Signs vs Normal Ranges")
             st.plotly_chart(bar_chart, use_container_width=True)
 
@@ -194,7 +246,7 @@ else:
             st.markdown("### 🕸️ Health Profile Overview")
             st.plotly_chart(radar_chart, use_container_width=True)
 
-            st.markdown("### 🩺 Personalized Health Tips")
+            st.markdown("### 🦥 Personalized Health Tips")
 
             if user_data["Cholesterol"] > 200:
                 st.markdown("- Your cholesterol is high. Consider reducing saturated fats, exercising regularly, and speaking to your doctor about treatment.")
