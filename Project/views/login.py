@@ -19,7 +19,7 @@ def check_login(username, password):
 
 if "user" in st.session_state:
     st.session_state["notices"] = ["You are already logged in"]
-    st.switch_page("pages/dashboard.py")
+    st.switch_page("views/dashboard.py")
 
 st.title("🔐 Login to Heartistry")
 
@@ -35,7 +35,7 @@ with st.form("login_form"):
             st.session_state["user"] = user  
             if "admin" in st.session_state: del st.session_state["admin"]
             if "is_admin" in st.session_state: del st.session_state["is_admin"]
-            st.switch_page("pages/dashboard.py")
+            st.switch_page("views/dashboard.py")
         else:
             st.error("❌ Invalid username or password!")
 
@@ -46,9 +46,9 @@ col1, col2 = st.columns([1, 1])
 with col1:
     st.write("Don't have an account?")
     if st.button("Create an Account", use_container_width=True):
-        st.switch_page("pages/signup.py")
+        st.switch_page("views/signup.py")
 
 with col2:
     st.write("Forgot your password?")
     if st.button("Reset Password", use_container_width=True):
-        st.switch_page("pages/forgot_password.py")
+        st.switch_page("views/forgot_password.py")

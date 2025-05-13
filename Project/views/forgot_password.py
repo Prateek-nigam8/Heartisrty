@@ -88,7 +88,7 @@ def update_password(email, new_password):
 
 if "user" in st.session_state:
     st.session_state["notices"] = ["You are already logged in"]
-    st.switch_page("pages/dashboard.py")
+    st.switch_page("views/dashboard.py")
 
 st.title("🔑 Forgot Password")
 
@@ -118,7 +118,7 @@ if "reset_email" in st.session_state and "reset_code" in st.session_state:
                 # Redirect to login after displaying success message
                 st.info("Redirecting to login page...")
                 st.rerun()  # Using st.rerun() instead of experimental_rerun
-                st.switch_page("pages/login.py")
+                st.switch_page("views/login.py")
             else:
                 st.error("❌ Error updating password")
                 
@@ -128,7 +128,7 @@ if "reset_email" in st.session_state and "reset_code" in st.session_state:
             del st.session_state["reset_email"]
         if "reset_code" in st.session_state:
             del st.session_state["reset_code"]
-        st.switch_page("pages/login.py")
+        st.switch_page("views/login.py")
         
 else:
     # Normal forgot password flow
@@ -155,4 +155,4 @@ else:
                 st.error("❌ Email not found in our records")
                 
     if st.button("Back to Login"):
-        st.switch_page("pages/login.py")
+        st.switch_page("views/login.py")

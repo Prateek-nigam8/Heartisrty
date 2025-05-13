@@ -29,11 +29,11 @@ st.markdown("---")
 st.markdown("**💡 Start Your Heart Health Journey Today!**")
 
 if st.button("Get Started 🚀"):
-    st.switch_page("pages/login.py")
+    st.switch_page("views/login.py")
     
 # Add a small admin access link at the bottom
 st.markdown("---")
 col1, col2, col3 = st.columns([3, 1, 1])
 with col3:
     if st.button("Admin Access", key="admin_access"):
-        st.switch_page("pages/admin_login.py")
+        st.switch_page("views/admin_login.py")
