@@ -66,20 +66,20 @@ You can explore and download sample medical reports for testing:
 
 
 ### 📄 PDF Analysis Output
-![PDF Analysis Output](Project/screenshots/analysis.png)
+![PDF Analysis Output](Screenshots/analysis.png)
 
 ### 📝 Manual Entry Form (Editable Fields)
-![Manual Entry Form](Project/screenshots/form.png)
+![Manual Entry Form](Screenshots/form.png)
 
 ### 💡 Health Recommendation Section
-![Recommendations](Project/screenshots/recom.png)
+![Recommendations](Screenshots/recom.png)
 
 ### 🛠️ Admin Dashboard Interface
-![Admin Dashboard](Project/screenshots/admin1.png)
-![Admin Dashboard](Project/screenshots/admin2.png)
+![Admin Dashboard](Screenshots/admin1.png)
+![Admin Dashboard](Screenshots/admin2.png)
 
 ### 📬 SOS Email Received by User
-![SOS Email](Project/screenshots/email.png)
+![SOS Email](Screenshots/email.png)
 
 ---
 
