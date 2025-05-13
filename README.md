@@ -79,7 +79,7 @@ You can explore and download sample medical reports for testing:
 ![Admin Dashboard](Screenshots/admin2.png)
 
 ### 📬 SOS Email Received by User
-![SOS Email](Screenshots/email.png)
+![SOS Email](Screenshots/Email.png)
 
 ---
 
