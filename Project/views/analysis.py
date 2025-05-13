@@ -3,6 +3,7 @@ import pandas as pd
 import plotly.graph_objects as go
 from prediction_model import predict_heart_disease, calculate_cardiovascular_age
 from db import get_db_connection
+from tips import generate_health_tips
 
 def get_user_details(user_id):
     conn = get_db_connection()
@@ -40,10 +41,10 @@ def get_user_details(user_id):
 
             # Apply mappings for transformed values
             chest_pain_type_map = {
-                "Typical Angina": "TA",
-                "Atypical Angina": "ATA",
-                "Non-Anginal Pain": "NAP",
-                "Asymptomatic": "ASY"
+                "Typical Chest Pain During Activity": "TA",
+                "Unusual Chest Pain": "ATA",
+                "Discomfort around Chest Area": "NAP",
+                "No Chest Pain / Silent Symptoms": "ASY"
             }
             resting_ecg_map = {
                 "Normal": "Normal",
@@ -172,18 +173,28 @@ else:
             ))
 
             gauge = go.Figure(go.Indicator(
-                mode="gauge+number+delta",
-                value=probability * 100,
-                title={'text': "Heart Disease Risk %"},
-                gauge={
-                    'axis': {'range': [0, 100]},
-                    'bar': {'color': "crimson" if probability > 0.6 else "orange" if probability > 0.3 else "green"},
-                    'steps': [
-                        {'range': [0, 30], 'color': "lightgreen"},
-                        {'range': [30, 60], 'color': "yellow"},
-                        {'range': [60, 100], 'color': "lightcoral"},
-                    ],
-                }
+                    mode="gauge+number+delta",
+                    value=probability * 100,
+                    title={'text': "Heart Disease Risk %"},                    
+                    gauge={
+                        'axis': {'range': [0, 100]},
+                        'steps': [
+                            {'range': [0, 30],  'color': "lightgreen"},
+                            {'range': [30, 60], 'color': "yellow"},
+                            {'range': [60, 100],'color': "lightcoral"},
+                        ],
+                        'bar': {
+                            'color': "crimson" if probability > 0.6 
+                                     else "orange" if probability > 0.3 
+                                     else "green"
+                        },
+                        # ← the magic: draw the needle as a threshold line
+                        'threshold': {
+                            'value': probability * 100,
+                            'line': {'color': 'black', 'width': 4},
+                            'thickness': 0.75
+                        }
+                    }
             ))
 
             normal_ranges = {
@@ -248,16 +259,8 @@ else:
 
             st.markdown("### 🦥 Personalized Health Tips")
 
-            if user_data["Cholesterol"] > 200:
-                st.markdown("- Your cholesterol is high. Consider reducing saturated fats, exercising regularly, and speaking to your doctor about treatment.")
-            if user_data["RestingBP"] > 120:
-                st.markdown("- Elevated blood pressure can increase your risk. Reduce salt intake, manage stress, and follow medical guidance.")
-            if user_data["MaxHR"] > 100:
-                st.markdown("- Your maximum heart rate is elevated. While this can be normal for active individuals, consistently high MaxHR may indicate overexertion or cardiovascular stress. Monitor during workouts and consult a healthcare professional if concerned.")
-            if user_data["Oldpeak"] > 1.0:
-                st.markdown("- Your ST depression is higher than normal. This may indicate heart strain. Consider a follow-up with your healthcare provider.")
-            if user_data["FastingBS"] == 1:
-                st.markdown("- High fasting blood sugar is a diabetes risk. Consider cutting back on sugar and refined carbs.")
+            for i in generate_health_tips(user_data):
+                st.markdown(i)
 
             st.markdown("🧘‍♀️ _Regular checkups, lifestyle changes, and early detection can greatly reduce your risk._")
 

@@ -118,7 +118,7 @@ def save_health_data_to_db(health_data):
 
 def show_upload_tab():
     st.subheader("Upload Medical Document for Scanning")
-    st.write("Upload your medical report as a PDF...")
+    st.write("Upload your medical report such as Heart report, Blood report, Complete blood count report, Lipid profile, Diabetic profile etc. as a PDF...")
 
     uploaded_file = st.file_uploader("Upload a PDF file", type=["pdf"])
     
@@ -148,11 +148,12 @@ def show_upload_tab():
                 time.sleep(1)
                 
                 if extracted_metrics:
-                    st.session_state["extracted_metrics"] = extracted_metrics
                     st.session_state['pdf_processing_complete'] = True
+                    for key in list(validate_health_data(extracted_metrics).keys()):
+                        extracted_metrics.pop(key, None)
+                    st.session_state["extracted_metrics"] = extracted_metrics                    
                     progress_bar.progress(100)
-                    progress_text.text("Scan complete!")
-                    time.sleep(3)
+                    progress_text.text("Scan complete!")  
                     st.write(extracted_metrics)
                 else:
                     st.warning("No data extracted.")
@@ -167,50 +168,110 @@ def is_valid_email(email):
     return re.match(r"[^@]+@[^@]+\.[^@]+", email)
 
 def show_manual_entry_tab():
-    st.subheader("Manual Health Data Entry")
-    st.write("⚠️ All fields are required. Please enter valid data for each.")
+    st.subheader("📝 Manual Health Data Entry")
+    st.write("Please fill out each field below. All entries are required to assess your heart health accurately.")
     pre_filled = st.session_state.get("extracted_metrics", {})
-    
-    # Define options for all selectboxes
+
+    # Options for select boxes
     select_fields = {
-        "Sex": ["", "Male", "Female"],
-        "ChestPainType": ["", "Typical Angina", "Atypical Angina", "Non-Anginal Pain", "Asymptomatic"],
-        "RestingECG": ["", "Normal", "ST-T Wave Abnormality", "Left Ventricular Hypertrophy"],
-        "ST_Slope": ["", "Upsloping", "Flat", "Downsloping"],
-        "ExerciseAngina": ["", "No", "Yes"]
+        "Sex": ["Select Sex", "Male", "Female"],
+        "ChestPainType": ["Select Chest Pain Type", "Typical Chest Pain During Activity", "Unusual Chest Pain", "Discomfort around Chest Area", "No Chest Pain / Silent Symptoms"],
+        "RestingECG": ["Select ECG Result", "Normal", "ST-T Wave Abnormality", "Left Ventricular Hypertrophy"],
+        "ST_Slope": ["Select ST Segment Slope", "Upsloping", "Flat", "Downsloping"],
+        "ExerciseAngina": ["Select Exercise-Induced Chest Pain", "Yes", "No"]
     }
 
-    # Pre-fill selectbox indices based on document values
+    # Compute selectbox indexes for pre-filled data
     select_indices = {}
     for field, options in select_fields.items():
         value = pre_filled.get(field, "")
-        index = options.index(value) if value in options else 0
-        select_indices[field] = index
+        select_indices[field] = options.index(value) if value in options else 0
 
     if pre_filled:
-        st.info("Fields pre-filled from uploaded document. Please review and complete all.")
+        st.info("✅ We’ve pre-filled some fields from your uploaded report. Please review and correct if needed.")
 
-    # Initialize session state for save success if not present
+    # Track save state
     if "data_saved" not in st.session_state:
         st.session_state["data_saved"] = False
 
     with st.form("health_metrics_form"):
         col1, col2 = st.columns(2)
         with col1:
-            age = st.text_input("Age", value=str(pre_filled.get("Age", "")))
-            sex = st.selectbox("Sex", select_fields["Sex"], index=select_indices["Sex"])
-            resting_bp = st.text_input("Resting BP (mmHg)", value=str(pre_filled.get("RestingBP", "")))
-            cholesterol = st.text_input("Cholesterol (mg/dL)", value=str(pre_filled.get("Cholesterol", "")))
-            fasting_bs = st.text_input("Fasting Blood Sugar (mg/dL)", value=str(pre_filled.get("FastingBS", "")))
-            sos_email = st.text_input("Emergency Contact Email", value=pre_filled.get("SOSEmail", ""))
+            age = st.text_input(
+                "Age (years)",
+                value=str(pre_filled.get("Age", "")),
+                placeholder="e.g. 45",
+                help="Enter your age in whole years (must be between 18 and 120)."
+            )
+            sex = st.selectbox(
+                "Biological Sex",
+                select_fields["Sex"],
+                index=select_indices["Sex"],
+                help="Select the sex assigned at birth."
+            )
+            resting_bp = st.text_input(
+                "Resting Blood Pressure (mmHg)",
+                value=str(pre_filled.get("RestingBP", "")),
+                placeholder="e.g. 120",
+                help="Enter your resting systolic blood pressure in mmHg (80–220)."
+            )
+            cholesterol = st.text_input(
+                "Cholesterol Level (mg/dL)",
+                value=str(pre_filled.get("Cholesterol", "")),
+                placeholder="e.g. 200",
+                help="Enter your fasting cholesterol in mg/dL (100–600)."
+            )
+            fasting_bs = st.text_input(
+                "Fasting Blood Sugar (mg/dL)",
+                value=str(pre_filled.get("FastingBS", "")),
+                placeholder="e.g. 85",
+                help="Enter your fasting blood sugar level in mg/dL (50–400)."
+            )
+            sos_email = st.text_input(
+                "Emergency Contact Email",
+                value=pre_filled.get("SOSEmail", ""),
+                placeholder="e.g. friend@example.com",
+                help="Provide a valid email for your emergency contact."
+            )
 
         with col2:
-            max_hr = st.text_input("Maximum Heart Rate (bpm)", value=str(pre_filled.get("MaxHR", "")))
-            chest_pain_type = st.selectbox("Chest Pain Type", select_fields["ChestPainType"], index=select_indices["ChestPainType"])
-            resting_ecg = st.selectbox("Resting ECG", select_fields["RestingECG"], index=select_indices["RestingECG"])
-            oldpeak = st.text_input("Oldpeak (ST depression)", value=str(pre_filled.get("Oldpeak", "")))
-            st_slope = st.selectbox("ST Slope", select_fields["ST_Slope"], index=select_indices["ST_Slope"])
-            exercise_angina = st.selectbox("Exercise Angina", select_fields["ExerciseAngina"], index=select_indices["ExerciseAngina"])
+            max_hr = st.text_input(
+                "Maximum Heart Rate (bpm)",
+                value=str(pre_filled.get("MaxHR", "")),
+                placeholder="e.g. 150",
+                help="Enter the maximum heart rate recorded during exercise (60–220 bpm)."
+            )
+            chest_pain_type = st.selectbox(
+                "Chest Pain Type",
+                select_fields["ChestPainType"],
+                index=select_indices["ChestPainType"],
+                help="Choose the type of chest discomfort you experience."                
+
+            )
+            resting_ecg = st.selectbox(
+                "Resting ECG Result",
+                select_fields["RestingECG"],
+                index=select_indices["RestingECG"],
+                help="Select the ECG classification at rest (Heart's Electrical Reading)."
+            )
+            oldpeak = st.text_input(
+                "ST Depression (Oldpeak)",
+                value=str(pre_filled.get("Oldpeak", "")),
+                placeholder="e.g. 1.2",
+                help="Enter the ST depression induced by exercise relative to rest (0.0–10.0)."
+            )
+            st_slope = st.selectbox(
+                "ST Segment Slope",
+                select_fields["ST_Slope"],
+                index=select_indices["ST_Slope"],
+                help="Direction of ECG Reading During Stress (Up / Flat / Down)."
+            )
+            exercise_angina = st.selectbox(
+                "Exercise-Induced Chest Pain",
+                select_fields["ExerciseAngina"],
+                index=select_indices["ExerciseAngina"],
+                help="Did you experience chest pain during exercise?"
+            )
 
         submitted = st.form_submit_button("Save Health Data")
 
@@ -231,31 +292,31 @@ def show_manual_entry_tab():
             }
 
             errors = validate_health_data(health_data)
-
             if errors:
                 for field, msg in errors.items():
                     st.error(f"❌ {field}: {msg}")
             else:
-                # Convert to proper types now (safe after validation)
+                # Safe type conversions
                 health_data.update({
                     "Age": int(age),
-                    "RestingBP": int(resting_bp),
-                    "Cholesterol": int(cholesterol),
+                    "RestingBP": float(resting_bp),
+                    "Cholesterol": float(cholesterol),
                     "FastingBS": float(fasting_bs),
-                    "MaxHR": int(max_hr),
-                    "Oldpeak": float(oldpeak)                    
-                })                
+                    "MaxHR": float(max_hr),
+                    "Oldpeak": float(oldpeak)
+                })
                 if save_health_data_to_db(health_data):
                     st.success("✅ Health data saved successfully!")
                     st.session_state["data_saved"] = True
                 else:
                     st.session_state["data_saved"] = False
 
-    # Navigation button outside the form
-    if st.session_state["data_saved"]:
-        if st.button("Go to analysis tab"):
-            st.session_state["data_saved"] = False  # Reset after navigation
+    # After saving, navigate to analysis
+    if st.session_state.get("data_saved"):
+        if st.button("➡️ Go to analysis tab"):
+            st.session_state["data_saved"] = False
             st.switch_page("views/analysis.py")
+
 
 
 col1, col2 = st.columns([8, 1])  # Adjust the middle ratio as needed
@@ -284,13 +345,11 @@ else:
     if 'pdf_processing_complete' not in st.session_state:
         st.session_state['pdf_processing_complete'] = False
 
-    # Section 1: Upload and extract
-    st.header("📤 Upload Medical Document")
+    # Section 1: Upload and extract    
     show_upload_tab()  # Handles file upload and sets session_state["extracted_metrics"]
 
     # Separator line
     st.markdown("---")
 
     # Section 2: Manual Entry Form
-    st.header("📝 Manual Health Data Entry")
     show_manual_entry_tab()
