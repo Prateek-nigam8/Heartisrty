@@ -26,6 +26,18 @@ def validate_health_data(data: dict) -> dict:
         except (ValueError, TypeError):
             return False
 
+        # Define the set of expected keys
+    expected_keys = {
+        "Age", "Sex", "ChestPainType", "RestingBP", "Cholesterol",
+        "FastingBS", "RestingECG", "MaxHR", "ExerciseAngina",
+        "Oldpeak", "ST_Slope", "SOSEmail"
+    }
+
+    # 1) Flag any unexpected keys
+    extra_keys = set(data.keys()) - expected_keys
+    for key in extra_keys:
+        errors[key] = "Invalid Key"
+
     # Age: Required, Integer between 18 and 120
     age = data.get("Age")
     if not age:
@@ -42,7 +54,7 @@ def validate_health_data(data: dict) -> dict:
 
     # Chest Pain Type
     chest_pain = data.get("ChestPainType")
-    valid_chest_pain_types = ["Typical Angina", "Atypical Angina", "Non-Anginal Pain", "Asymptomatic"]
+    valid_chest_pain_types = ["Typical Chest Pain During Activity", "Unusual Chest Pain", "Discomfort around Chest Area", "No Chest Pain / Silent Symptoms"]
     if not chest_pain:
         errors["ChestPainType"] = "Chest Pain Type is required."
     elif chest_pain not in valid_chest_pain_types:
@@ -52,22 +64,22 @@ def validate_health_data(data: dict) -> dict:
     resting_bp = data.get("RestingBP")
     if not resting_bp:
         errors["RestingBP"] = "Resting Blood Pressure is required."
-    elif not is_int(resting_bp) or not (80 <= int(resting_bp) <= 220):
-        errors["RestingBP"] = "Resting Blood Pressure must be an integer between 80 and 220."
+    elif not is_float(resting_bp) or not (80 <= float(resting_bp) <= 220):
+        errors["RestingBP"] = "Resting Blood Pressure must be between 80 and 220."
 
     # Cholesterol
     cholesterol = data.get("Cholesterol")
     if not cholesterol:
         errors["Cholesterol"] = "Cholesterol is required."
-    elif not is_int(cholesterol) or not (100 <= int(cholesterol) <= 600):
-        errors["Cholesterol"] = "Cholesterol must be an integer between 100 and 600."
+    elif not is_float(cholesterol) or not (100 <= float(cholesterol) <= 600):
+        errors["Cholesterol"] = "Cholesterol must be between 100 and 600."
 
     # Fasting Blood Sugar
     fasting_bs = data.get("FastingBS")
     if not fasting_bs:
         errors["FastingBS"] = "Fasting Blood Sugar is required."
-    elif not is_int(fasting_bs) or not (50 <= int(fasting_bs) <= 400):
-        errors["FastingBS"] = "Fasting Blood Sugar must be an integer between 50 and 400."
+    elif not is_float(fasting_bs) or not (50 <= float(fasting_bs) <= 400):
+        errors["FastingBS"] = "Fasting Blood Sugar must be between 50 and 400."
 
     # Max Heart Rate
     max_hr = data.get("MaxHR")
